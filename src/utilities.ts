@@ -1,12 +1,12 @@
-import { Configuration } from ".";
+import { Credentials } from ".";
 import neo4j, { Driver } from "neo4j-driver";
 import camelcase from "camelcase";
 import pluralize, { singular } from "pluralize";
 
-export function getNeo4jDriver(configuration: Configuration): Driver {
+export function getNeo4jDriver(credentials: Credentials): Driver {
   return neo4j.driver(
-    configuration.neo4j_url,
-    neo4j.auth.basic(configuration.neo4j_user, configuration.neo4j_pass)
+    credentials.neo4j_url,
+    neo4j.auth.basic(credentials.neo4j_user, credentials.neo4j_pass)
   );
 }
 

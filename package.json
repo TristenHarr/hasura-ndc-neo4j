@@ -3,16 +3,15 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "start": "ts-node ./src/index.ts serve --configuration=configuration.json",
-    "start-server": "ts-node ./src/index.ts configuration serve",
-    "start:test": "ts-node ./src/index.ts serve --configuration=__tests__/data/configuration.json",
+    "start": "NEO4J_URL=neo4j://localhost:7687/neo4j ts-node ./src/index.ts serve --configuration=./ --port=8100",
+    "start:test": "NEO4J_URL=neo4j://localhost:7687/neo4j ts-node ./src/index.ts serve --configuration=__tests__/data/ --port=8100",
     "test": "jest --detectOpenHandles"
   },
   "dependencies": {
-    "@hasura/ndc-sdk-typescript": "^1.4.0",
+    "@hasura/ndc-sdk-typescript": "^4.2.1",
     "@json-schema-tools/meta-schema": "^1.7.0",
     "@neo4j/graphql": "^4.4.1",
-    "@neo4j/introspector": "^2.0.0",
+    "@neo4j/introspector": "^3.0.0",
     "@types/node": "^20.6.0",
     "camelcase": "^6.3.0",
     "commander": "^11.0.0",

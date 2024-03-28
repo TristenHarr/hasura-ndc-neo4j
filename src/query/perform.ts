@@ -29,14 +29,20 @@ export async function performQuery({
   configuration: Configuration;
   variables?: Record<string, unknown>;
 }): Promise<Record<string, any> | undefined | null> {
-  if (configuration.neoSchema) {
-    return executeQuery({
-      neoSchema: configuration.neoSchema,
-      queryPlan,
-      state,
-      variables,
-    });
-  }
+  // For some reason this doesn't work? 
+  // Ideally, this should be the preferred path. The config should be immutable.
+  
+  // if (configuration.neoSchema) {
+  //   console.log("HAVE SCHEMA");
+  //   console.log(configuration.neoSchema);
+  //   return executeQuery({
+  //     neoSchema: configuration.neoSchema,
+  //     queryPlan,
+  //     state,
+  //     variables,
+  //   });
+  // }
+
   const typeDefs = configuration.typedefs;
   if (!typeDefs) {
     throw new BadRequest("Typedefs not defined.", {});

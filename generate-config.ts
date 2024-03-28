@@ -1,16 +1,36 @@
-import { Configuration, ConfigurationSchema } from "..";
-import { BASE_TYPES, assertTypeNameIsRestricted } from "../constants";
+import { Configuration, ConfigurationSchema } from "./src";
+import { BASE_TYPES, assertTypeNameIsRestricted } from "./src/constants";
 import {
   getNeo4jDriver,
   inferRelationshipFieldName,
   toPlural,
-} from "../utilities";
+} from "./src/utilities";
 import { toGenericStruct, toGraphQLTypeDefs } from "@neo4j/introspector";
 import { Neo4jStruct } from "@neo4j/introspector/dist/types";
 import Property from "@neo4j/introspector/dist/classes/Property";
 // @ts-ignore
 import { ObjectField, Type } from "@hasura/ndc-sdk-typescript";
 import { Neo4jGraphQL } from "@neo4j/graphql";
+import * as fs from "fs";
+import { promisify } from "util";
+const writeFile = promisify(fs.writeFile);
+const NEO4J_URL = process.env["NEO4J_URL"] as string;
+let NEO4J_USER = process.env["NEO4J_USER"] as string | undefined;
+if (NEO4J_USER === undefined){
+  NEO4J_USER = "";
+}
+let NEO4J_PASS = process.env["NEO4J_PASS"] as string | undefined;
+if (NEO4J_PASS === undefined){
+  NEO4J_PASS = "";
+}
+
+/**
+ * Some Notes involving the schema modelling..
+ * The connector does need to handle it's own introspection
+ * The config should be immutable and provided on startup.
+ * There will be an update command that will perform introspection and write the config to a mounted volume.
+ * 
+ */
 
 /**
  * This is a fallback of the default mechanism of getting the data through the configuration object.
@@ -28,9 +48,43 @@ export async function doUpdateConfiguration(
   //   return configuration;
   // }
 
-  const driver = getNeo4jDriver(configuration);
-  const typeDefs = await toGraphQLTypeDefs(() => driver.session());
-  console.log("typeDefs", typeDefs);
+  const driver = getNeo4jDriver({neo4j_url: NEO4J_URL, neo4j_user: NEO4J_USER as string, neo4j_pass: NEO4J_PASS as string});
+  // There seems to be an error with the toGraphQLTypeDefs, in that it is correct for all types except for screenTime which is a Duration
+  // When you replace the typeDefs with a hard-coded typeDefs with Duration like this:
+  // const typeDefs = "type Actor {\n    id: Int!\n    livesIn: Point!\n    bornIn: Point!\n    name: String!\n}\n\ntype Movie {\n    releasedIn: DateTime!\n    size: String!\n    releasedInLocal: LocalDateTime!\n    year: String!\n    screenTime: Duration!\n    isPublic: Boolean!\n    id: Int!\n    time: Time!\n    title: String!\n    timeLocal: LocalTime!\n}\n\n";
+  // The correct neoSchema is generated.
+  // const typeDefs = await toGraphQLTypeDefs(() => driver.session());
+
+  // As a work-around for now I will generate the type-defs by hand.
+  const genericStruct = await toGenericStruct(() => driver.session());
+  let typeDefs = "";
+
+  for (let [_, value] of Object.entries(genericStruct.nodes)) {
+      // Using the type label as the GraphQL type name
+      const typeName = value.labels[0]; // Assuming the first label is the type name
+      let typeBody = `type ${typeName} {\n`;
+  
+      // Add each property as a field in the type definition
+      for (let prop of value.properties) {
+          const propName = prop.name;
+          // Here, we directly use the first type in the types array without conversion
+          let propType = prop.types[0]; // Taking the first type as is
+
+          // This isn't quite perfect either, as the Long type gets converted to an Int.
+          // This could probably be handled by adding a Long to the scalar types and updating the relevant logic?
+          if (propType === "Long"){
+            propType = "Int";
+          }
+          const mandatory = prop.mandatory ? "!" : "";
+  
+          typeBody += `    ${propName}: ${propType}${mandatory}\n`;
+      }
+  
+      typeBody += "}\n\n";
+      typeDefs += typeBody;
+  }
+  // console.log("typeDefs", typeDefs);
+  // const typeDefs = "type Actor {\n\tbornIn: Point!\n\tid: BigInt!\n\tlivesIn: Point!\n\tname: String!\n}\n\ntype Movie {\n\tid: BigInt!\n\tisPublic: Boolean!\n\treleasedIn: DateTime!\n\treleasedInLocal: LocalDateTime!\n\tscreenTime: String!\n\tsize: String!\n\ttime: Time!\n\ttimeLocal: LocalTime!\n\ttitle: String!\n\tyear: String!\n}";
   const neo4jGQL = new Neo4jGraphQL({
     typeDefs,
     driver,
@@ -41,7 +95,6 @@ export async function doUpdateConfiguration(
 
   // TODO: result of toGenericStruct may differ from what toGraphQLTypeDefs used to generate the typedefs string
   // ideally change the introspector to return typedefs and also the struct it used to generate them
-  const genericStruct = await toGenericStruct(() => driver.session());
   console.log("genericStruct", genericStruct);
   const collectionNames = Object.values(genericStruct.nodes)
     .map((n) => n.labels[0])
@@ -175,6 +228,7 @@ function propertiesToHasuraField(
     type: "nullable",
     underlying_type: x,
   });
+  console.log(properties);
   const fields = new Map<string, ObjectField>();
   for (const property of properties) {
     let fieldType: Type | undefined;
@@ -211,3 +265,15 @@ function propertiesToHasuraField(
   }
   return fields;
 }
+
+async function main() {
+    const configuration: Configuration = {};
+    console.log("DOING UPDATE");
+    const newConfig = await doUpdateConfiguration(configuration);
+    console.log("CONFIG");
+    console.log(newConfig);
+    await writeFile("/etc/connector/config.json", JSON.stringify(newConfig));
+    process.exit(0);
+}
+
+main();

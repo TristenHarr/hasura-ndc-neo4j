@@ -34,6 +34,8 @@ export async function doQuery({
     throw new BadRequest("Config is not configured", {});
   }
   const queryPlan = await planQuery(query, configuration.config, variables);
+  console.log("QUERY PLAN");
+  console.log(queryPlan);
   const neo4jResults = await performQuery({
     queryPlan,
     state,

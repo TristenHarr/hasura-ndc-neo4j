@@ -3,13 +3,16 @@ import * as fs from "fs";
 import * as path from "path";
 import { Driver } from "neo4j-driver";
 import { getNeo4jDriver } from "../src/utilities";
-
+import { Credentials } from "../src";
+const NEO4J_URL = "neo4j://localhost:7687/neo4j";
+const NEO4J_PASS = "";
+const NEO4J_USER = "";
 describe("API Tests", () => {
   const baseDir = path.resolve(__dirname, "./requests");
   const dataFile = path.resolve(__dirname, "./data/data.json");
   const configurationFile = path.resolve(
     __dirname,
-    "./data/configuration.json"
+    "./data/config.json"
   );
   const testDirs: string[] = [
     path.resolve(baseDir, "movies"),
@@ -23,6 +26,7 @@ describe("API Tests", () => {
   }
 
   async function setupDatabase() {
+    console.log("SETTING UP DATABASE");
     const configuration = await loadDataFromFile(configurationFile);
     const data = await loadDataFromFile(dataFile);
     const createStatements = [];
@@ -44,7 +48,8 @@ describe("API Tests", () => {
     try {
       const insertQuery = createStatements.join("\n");
       console.log("executing query", insertQuery);
-      driver = getNeo4jDriver(configuration);
+      const creds: Credentials = {neo4j_url: NEO4J_URL, neo4j_pass: NEO4J_PASS, neo4j_user: NEO4J_USER};
+      driver = getNeo4jDriver(creds);
       await driver.executeQuery(insertQuery);
     } catch (err) {
       console.error("error:", err);
@@ -53,22 +58,22 @@ describe("API Tests", () => {
   }
 
   beforeAll(async () => {
-    await setupDatabase();
+    // await setupDatabase();
   });
 
   afterAll(async () => {
-    if (!driver) {
-      console.log("Cannot find driver. Unable to cleanup.");
-      return;
-    }
-    const configuration = await loadDataFromFile(configurationFile);
+    // if (!driver) {
+    //   console.log("Cannot find driver. Unable to cleanup.");
+    //   return;
+    // }
+    // const configuration = await loadDataFromFile(configurationFile);
 
-    for (const label of configuration.config.collection_names) {
-      const individualCollectionName: string = label.slice(0, -1);
-      await driver.executeQuery(
-        `MATCH (n: ${individualCollectionName}) DETACH DELETE n`
-      );
-    }
+    // for (const label of configuration.config.collection_names) {
+    //   const individualCollectionName: string = label.slice(0, -1);
+    //   await driver.executeQuery(
+    //     `MATCH (n: ${individualCollectionName}) DETACH DELETE n`
+    //   );
+    // }
   });
 
   testDirs.forEach((testDir) => {
@@ -87,9 +92,10 @@ describe("API Tests", () => {
           //   try {
           const apiResponse = await axios({
             method,
-            url: `http://127.0.0.1:8100/${url}`,
+            url: `http://127.0.0.1:8084/${url}`,
             data: request,
           });
+          console.log(JSON.stringify(apiResponse.data, null, 4));
           expect(apiResponse.data).toEqual(response);
           //   } catch (err) {
           //     console.error(

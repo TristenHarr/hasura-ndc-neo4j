@@ -7,7 +7,7 @@ import {
   OrderBy,
   OrderByElement,
   Query,
-  BinaryComparisonOperator,
+  // BinaryComparisonOperator,
   ComparisonValue,
   PathElement,
   // @ts-ignore
@@ -81,7 +81,7 @@ function makeGQLQuery({
     });
   }
 
-  const { limit, offset, where, order_by: orderBy, fields } = query;
+  const { limit, offset, predicate, order_by: orderBy, fields } = query;
 
   const individualCollectionName: string = toSingular(collectionName);
   if (!fields) {
@@ -170,7 +170,7 @@ function makeGQLQuery({
     {
       limit,
       offset,
-      where,
+      where: predicate,
       orderBy,
     },
     variables
@@ -241,6 +241,7 @@ function predicateToWhereFilter(
     }
     case "binary_comparison_operator": {
       const makeFilter = withResolvedTarget(predicateExpression.column);
+      const columnName = predicateExpression.column.name;
       const operator = resolveBinaryComparisonOperator(
         predicateExpression.operator
       );
@@ -250,16 +251,16 @@ function predicateToWhereFilter(
       );
       return makeFilter(value, operator);
     }
-    case "binary_array_comparison_operator": {
-      if (predicateExpression.operator !== "in") {
-        throw new Error("Operator is not supported");
-      }
-      const makeFilter = withResolvedTarget(predicateExpression.column);
-      const values = predicateExpression.values.map((value: ComparisonValue) =>
-        resolveComparisonValue(value, variables)
-      );
-      return makeFilter(values, "in");
-    }
+    // case "binary_array_comparison_operator": {
+    //   if (predicateExpression.operator !== "in") {
+    //     throw new Error("Operator is not supported");
+    //   }
+    //   const makeFilter = withResolvedTarget(predicateExpression.column);
+    //   const values = predicateExpression.values.map((value: ComparisonValue) =>
+    //     resolveComparisonValue(value, variables)
+    //   );
+    //   return makeFilter(values, "in");
+    // }
     case "exists":
       // in_collection: ExistsInCollection;
       // where: Expression;
@@ -296,14 +297,12 @@ function resolveComparisonValue(
   return value;
 }
 
-function resolveBinaryComparisonOperator(operator: BinaryComparisonOperator) {
-  switch (operator.type) {
-    case "equal":
+function resolveBinaryComparisonOperator(operator: string) {
+  switch (operator) {
+    case "eq":
       return "";
-    case "other":
-      return `_${operator.name.toUpperCase()}`;
     default:
-      throw Error("Operator not supported");
+      return `_${operator.toUpperCase()}`;
   }
 }
 

@@ -1,0 +1,46 @@
+{
+    "method": "POST",
+    "url": "query",
+    "request": {
+        "collection": "Actors",
+        "arguments": {},
+        "query": {
+            "fields": {
+                "id": {
+                    "type": "column",
+                    "column": "id"
+                },
+                "name": {
+                    "type": "column",
+                    "column": "name"
+                }
+            },
+            "where": {
+                "type": "binary_comparison_operator",
+                "column": {
+                    "type": "column",
+                    "name": "id",
+                    "path": []
+                },
+                "operator": {
+                    "type": "equal"
+                },
+                "value": {
+                    "type": "scalar",
+                    "value": 0
+                }
+            }
+        },
+        "collection_relationships": {}
+    },
+    "response": [
+        {
+            "rows": [
+                {
+                    "id": 0,
+                    "name": "Keanu Reeves"
+                }
+            ]
+        }
+    ]
+}
